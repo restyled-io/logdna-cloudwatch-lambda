@@ -35,7 +35,7 @@ jobs:
       - run: yarn run dist
       - id: artifact
         run: |
-          key=src/forward-logs/${{ github.sha }}.zip
+          key=src/logdna-cloudwatch/${{ github.sha }}.zip
           aws s3 cp --acl public-read dist/lambda.zip "s3://infra.restyled.io/$key"
           echo "::set-output name=key::$key"
 
