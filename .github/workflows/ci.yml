@@ -6,52 +6,34 @@ on:
     branches: main
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: us-east-1
-
-    steps:
-      - uses: actions/checkout@v1
-      - uses: c-hive/gha-yarn-cache@v1
-      - run: yarn install
-      - run: |
-          rm .env.test # Force use of CI env
-          yarn test
-
   artifact:
     runs-on: ubuntu-latest
-
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: us-east-1
 
     steps:
-      - uses: actions/checkout@v1
-      - run: yarn run dist
-      - id: artifact
+      - id: prep
         run: |
-          key=src/logdna-cloudwatch/${{ github.sha }}.zip
-          aws s3 cp --acl public-read dist/lambda.zip "s3://infra.restyled.io/$key"
-          echo "::set-output name=key::$key"
+          echo "::set-output name=logdna-cloudwatch-version::v2.2.1"
 
-    outputs:
-      key: ${{ steps.artifact.outputs.key }}
+      - uses: robinraju/release-downloader@v1.3
+        with:
+          repository: logdna/logdna-cloudwatch
+          tag: ${{ steps.prep.outputs.logdna-cloudwatch-version }}
+          fileName: logdna-cloudwatch.zip
 
-  deploy:
-    if: ${{ github.ref == 'refs/heads/main' }}
-    needs: [test, artifact]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: restyled-io/gitops-deploy-action@main
+      - run: |
+          key=src/logdna-cloudwatch/${{ steps.prep.outputs.logdna-cloudwatch-version }}.zip
+          aws s3 cp --acl public-read logdna-cloudwatch.zip "s3://infra.restyled.io/$key"
+
+      - if: ${{ github.ref == 'refs/heads/main' }}
+        uses: restyled-io/gitops-deploy-action@main
         with:
           token: ${{ secrets.GITOPS_ACCESS_TOKEN }}
-          parameter-name: FunctionSourceKey
-          parameter-value: ${{ needs.artifact.outputs.key }}
+          parameter-name: FunctionSourceVersion
+          parameter-value: ${{ steps.prep.outputs.logdna-cloudwatch-version }}
           committer-name: Restyled Commits
           committer-email: commits@restyled.io
           repository: restyled-io/ops
