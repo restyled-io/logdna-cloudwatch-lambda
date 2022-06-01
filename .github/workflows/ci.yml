@@ -32,7 +32,7 @@ jobs:
         uses: restyled-io/gitops-deploy-action@main
         with:
           token: ${{ secrets.GITOPS_ACCESS_TOKEN }}
-          parameter-name: FunctionSourceVersion
+          parameter-name: LogDNACloudWatchVersion
           parameter-value: ${{ steps.prep.outputs.logdna-cloudwatch-version }}
           committer-name: Restyled Commits
           committer-email: commits@restyled.io
